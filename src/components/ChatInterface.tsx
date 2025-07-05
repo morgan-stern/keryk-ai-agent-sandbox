@@ -262,6 +262,7 @@ export function ChatInterface({ agentId }: ChatInterfaceProps) {
         <VoiceMode
           agentId={agentId}
           agentName={agent.name}
+          agentAvatar={agent.avatar}
           onSwitchToText={() => setIsVoiceMode(false)}
         />
       ) : (
