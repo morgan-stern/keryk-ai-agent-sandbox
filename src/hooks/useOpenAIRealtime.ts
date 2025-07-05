@@ -24,70 +24,125 @@ export function useOpenAIRealtime(config: RealtimeConfig) {
     transcript: '',
   });
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
-  const initializeAudio = useCallback(async () => {
+  // Generate ephemeral API key for WebRTC connection
+  const generateEphemeralKey = useCallback(async () => {
     try {
-      // Initialize audio context
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Get microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          sampleRate: 24000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-        } 
+      const response = await fetch('/api/generate-ephemeral-key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apiKey: config.apiKey })
       });
 
-      // Create media recorder
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      if (!response.ok) {
+        throw new Error('Failed to generate ephemeral key');
+      }
 
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      return true;
+      const data = await response.json();
+      return data.ephemeralKey;
     } catch (error) {
-      setState(prev => ({ ...prev, error: 'Microphone access denied' }));
-      return false;
+      console.error('Ephemeral key generation error:', error);
+      setState(prev => ({ ...prev, error: 'Failed to generate session key' }));
+      return null;
+    }
+  }, [config.apiKey]);
+
+  // Handle realtime messages from the data channel
+  const handleRealtimeMessage = useCallback((message: any) => {
+    console.log('Received message:', message.type);
+    switch (message.type) {
+      case 'input_audio_buffer.speech_started':
+        console.log('Speech started detected by server');
+        setState(prev => ({ ...prev, isRecording: true }));
+        break;
+        
+      case 'input_audio_buffer.speech_stopped':
+        console.log('Speech stopped detected by server');
+        setState(prev => ({ ...prev, isRecording: false }));
+        break;
+        
+      case 'conversation.item.input_audio_transcription.completed':
+        console.log('Transcription completed:', message.transcript);
+        setState(prev => ({ ...prev, transcript: message.transcript }));
+        break;
+        
+      case 'response.audio_transcript.delta':
+        // Handle audio transcription updates
+        console.log('Audio transcript delta:', message.delta);
+        break;
+        
+      case 'response.audio_transcript.done':
+        console.log('Audio transcript complete');
+        break;
+        
+      case 'error':
+        console.error('OpenAI error:', message.error);
+        setState(prev => ({ ...prev, error: message.error?.message || 'Unknown error' }));
+        break;
+        
+      case 'session.created':
+        console.log('Session created successfully');
+        break;
+        
+      case 'session.updated':
+        console.log('Session updated successfully');
+        break;
+        
+      default:
+        console.log('Unhandled message type:', message.type);
     }
   }, []);
 
-  const connect = useCallback(async () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
+  // Create WebRTC connection following the mentor example pattern
+  const createRealtimeConnection = useCallback(async (ephemeralKey: string, codec: string = 'pcm') => {
     try {
-      setState(prev => ({ ...prev, error: null }));
-      
-      // Initialize audio first
-      const audioInitialized = await initializeAudio();
-      if (!audioInitialized) {
-        return;
+      const pc = new RTCPeerConnection();
+
+      // Create audio element for playback if it doesn't exist
+      if (!audioElementRef.current) {
+        audioElementRef.current = document.createElement('audio');
+        audioElementRef.current.autoplay = true;
       }
 
-      // Connect to OpenAI Realtime API
-      const ws = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', [
-        'realtime',
-        `openai-insecure-api-key.${config.apiKey}`,
-        'openai-beta.realtime-v1'
-      ]);
+      // Handle incoming audio stream
+      pc.ontrack = (e) => {
+        if (audioElementRef.current) {
+          audioElementRef.current.srcObject = e.streams[0];
+          setState(prev => ({ ...prev, isPlaying: true }));
+        }
+      };
 
-      ws.onopen = () => {
-        setState(prev => ({ ...prev, isConnected: true, error: null }));
+      // Get user media and add track
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      pc.addTrack(mediaStream.getTracks()[0]);
+
+      // Set codec preferences based on selected codec
+      const capabilities = RTCRtpSender.getCapabilities("audio");
+      if (capabilities) {
+        const chosenCodec = capabilities.codecs.find(
+          (c) => c.mimeType.toLowerCase() === `audio/${codec}`
+        );
+        if (chosenCodec) {
+          pc.getTransceivers()[0].setCodecPreferences([chosenCodec]);
+        } else {
+          console.warn(`Codec "${codec}" not found in capabilities. Using default settings.`);
+        }
+      }
+
+      // Create data channel for events
+      const dc = pc.createDataChannel("oai-events");
+
+      // Handle data channel messages
+      dc.onopen = () => {
+        console.log('Data channel opened');
         
-        // Send session configuration
-        ws.send(JSON.stringify({
+        // Send session configuration via data channel
+        dc.send(JSON.stringify({
           type: 'session.update',
           session: {
             modalities: ['text', 'audio'],
@@ -108,150 +163,132 @@ export function useOpenAIRealtime(config: RealtimeConfig) {
         }));
       };
 
-      ws.onmessage = (event) => {
+      dc.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
           handleRealtimeMessage(message);
         } catch (error) {
-          // Silent error handling
+          console.error('Error parsing data channel message:', error);
         }
       };
 
-      ws.onerror = (error) => {
-        setState(prev => ({ ...prev, error: 'Connection failed', isConnected: false }));
-      };
+      // Create offer and set local description
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
 
-      ws.onclose = () => {
-        setState(prev => ({ ...prev, isConnected: false }));
-      };
+      // Send SDP to OpenAI API
+      const baseUrl = "https://api.openai.com/v1/realtime";
+      const model = config.model || "gpt-4o-realtime-preview-2024-12-17";
 
-      wsRef.current = ws;
-    } catch (error) {
-      setState(prev => ({ ...prev, error: 'Failed to connect to voice service' }));
-    }
-  }, [config, initializeAudio]);
+      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
+        method: "POST",
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${ephemeralKey}`,
+          "Content-Type": "application/sdp",
+        },
+      });
 
-  const handleRealtimeMessage = useCallback((message: any) => {
-    switch (message.type) {
-      case 'input_audio_buffer.speech_started':
-        setState(prev => ({ ...prev, isRecording: true }));
-        break;
-        
-      case 'input_audio_buffer.speech_stopped':
-        setState(prev => ({ ...prev, isRecording: false }));
-        break;
-        
-      case 'conversation.item.input_audio_transcription.completed':
-        setState(prev => ({ ...prev, transcript: message.transcript }));
-        break;
-        
-      case 'response.audio.delta':
-        // Play audio chunk
-        if (message.delta && audioContextRef.current) {
-          playAudioChunk(message.delta);
-        }
-        break;
-        
-      case 'response.audio.done':
-        setState(prev => ({ ...prev, isPlaying: false }));
-        break;
-        
-      case 'error':
-        setState(prev => ({ ...prev, error: message.error?.message || 'Unknown error' }));
-        break;
-    }
-  }, []);
-
-  const playAudioChunk = useCallback(async (base64Audio: string) => {
-    if (!audioContextRef.current) return;
-
-    try {
-      setState(prev => ({ ...prev, isPlaying: true }));
-      
-      // Decode base64 audio
-      const audioData = atob(base64Audio);
-      const arrayBuffer = new ArrayBuffer(audioData.length);
-      const view = new Uint8Array(arrayBuffer);
-      
-      for (let i = 0; i < audioData.length; i++) {
-        view[i] = audioData.charCodeAt(i);
+      if (!sdpResponse.ok) {
+        throw new Error(`SDP exchange failed: ${sdpResponse.status}`);
       }
 
-      // Create audio buffer and play
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-      source.start();
-    } catch (error) {
-      // Silent error handling
-    }
-  }, []);
+      const answerSdp = await sdpResponse.text();
+      const answer: RTCSessionDescriptionInit = {
+        type: "answer",
+        sdp: answerSdp,
+      };
 
-  const startRecording = useCallback(() => {
-    if (!mediaRecorderRef.current || !wsRef.current) {
-      setState(prev => ({ ...prev, error: 'Voice service not ready' }));
+      await pc.setRemoteDescription(answer);
+
+      return { pc, dc };
+    } catch (error) {
+      console.error('WebRTC connection error:', error);
+      setState(prev => ({ ...prev, error: `Connection failed: ${error.message}` }));
+      return null;
+    }
+  }, [config, handleRealtimeMessage]);
+
+  const connect = useCallback(async () => {
+    if (pcRef.current?.connectionState === 'connected') {
       return;
     }
 
     try {
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.start(100); // Collect data every 100ms
+      setState(prev => ({ ...prev, error: null }));
       
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
-          // Convert audio blob to base64 and send to OpenAI
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64Audio = btoa(reader.result as string);
-            wsRef.current?.send(JSON.stringify({
-              type: 'input_audio_buffer.append',
-              audio: base64Audio
-            }));
-          };
-          reader.readAsBinaryString(event.data);
+      // Generate ephemeral key for secure connection
+      const ephemeralKey = await generateEphemeralKey();
+      if (!ephemeralKey) {
+        return;
+      }
+
+      // Create WebRTC connection
+      const connection = await createRealtimeConnection(ephemeralKey);
+      if (!connection) {
+        return;
+      }
+
+      const { pc, dc } = connection;
+      pcRef.current = pc;
+      dcRef.current = dc;
+
+      // Set connection state handlers
+      pc.onconnectionstatechange = () => {
+        console.log('Connection state:', pc.connectionState);
+        setState(prev => ({ 
+          ...prev, 
+          isConnected: pc.connectionState === 'connected' 
+        }));
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('ICE connection state:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+          setState(prev => ({ ...prev, error: 'Connection lost', isConnected: false }));
         }
       };
+
     } catch (error) {
-      setState(prev => ({ ...prev, error: 'Failed to start recording' }));
+      console.error('Connection error:', error);
+      setState(prev => ({ ...prev, error: 'Failed to connect to voice service' }));
     }
+  }, [generateEphemeralKey, createRealtimeConnection]);
+
+  const startRecording = useCallback(() => {
+    console.log('startRecording called - WebRTC handles continuous audio streaming');
+    // With WebRTC, audio is automatically streamed and server VAD handles detection
+    // This function is kept for compatibility with the VoiceMode component
   }, []);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      
-      // Commit the audio buffer
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          type: 'input_audio_buffer.commit'
-        }));
-        
-        // Create response
-        wsRef.current.send(JSON.stringify({
-          type: 'response.create',
-          response: {
-            modalities: ['audio', 'text']
-          }
-        }));
-      }
+    console.log('stopRecording called - sending response request via data channel');
+    // Request response from assistant via data channel
+    if (dcRef.current?.readyState === 'open') {
+      console.log('Requesting response...');
+      dcRef.current.send(JSON.stringify({
+        type: 'response.create',
+        response: {
+          modalities: ['audio', 'text']
+        }
+      }));
     }
   }, []);
 
   const disconnect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+    if (dcRef.current) {
+      dcRef.current.close();
+      dcRef.current = null;
     }
     
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current = null;
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
     }
     
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
+    if (audioElementRef.current) {
+      audioElementRef.current.srcObject = null;
+      audioElementRef.current = null;
     }
     
     setState({
