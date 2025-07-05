@@ -74,4 +74,3 @@ export function VoiceMode({ agentId, agentName, onSwitchToText }: VoiceModeProps
     </div>
   )
 }
-EOF < /dev/null
