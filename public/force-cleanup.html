@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Force Service Worker Cleanup</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f0f0f0;
+            font-family: monospace;
+            font-size: 14px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background: #dc3545;
+            color: white;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #c82333;
+        }
+        .primary {
+            background: #007bff;
+        }
+        .primary:hover {
+            background: #0056b3;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .instructions {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🧹 Force Service Worker Cleanup</h1>
+        <p>This page will help you completely remove the problematic service worker.</p>
+        
+        <div class="instructions">
+            <strong>Manual Steps (if auto-cleanup doesn't work):</strong>
+            <ol>
+                <li>Open DevTools (F12 or right-click → Inspect)</li>
+                <li>Go to <strong>Application</strong> tab</li>
+                <li>Click <strong>Service Workers</strong> in left sidebar</li>
+                <li>Click <strong>Unregister</strong> for any workers</li>
+                <li>Go to <strong>Storage</strong> in left sidebar</li>
+                <li>Click <strong>Clear site data</strong></li>
+                <li>Refresh with <code>Cmd+Shift+R</code> (Mac) or <code>Ctrl+Shift+R</code> (PC)</li>
+            </ol>
+        </div>
+        
+        <div id="status" class="status">Ready to clean...</div>
+        
+        <button onclick="forceCleanup()">🔥 Force Complete Cleanup</button>
+        <button class="primary" onclick="testConnection()">🔍 Test Connection</button>
+        <button class="primary" onclick="hardNavigate()">🏠 Go Home (Hard Navigate)</button>
+    </div>
+
+    <script>
+        const log = (msg) => {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML += msg + '<br>';
+            statusEl.scrollTop = statusEl.scrollHeight;
+        };
+
+        async function forceCleanup() {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status';
+            statusEl.innerHTML = '';
+            
+            try {
+                log('🔍 Starting aggressive cleanup...');
+                
+                // 1. Unregister ALL service workers
+                if ('serviceWorker' in navigator) {
+                    log('📋 Getting all service worker registrations...');
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    log(`Found ${registrations.length} service worker(s)`);
+                    
+                    for (let registration of registrations) {
+                        log(`❌ Unregistering: ${registration.scope}`);
+                        await registration.unregister();
+                    }
+                    
+                    // 2. Clear ALL caches
+                    log('🗑️ Clearing all caches...');
+                    const cacheNames = await caches.keys();
+                    log(`Found ${cacheNames.length} cache(s)`);
+                    
+                    for (let cacheName of cacheNames) {
+                        log(`❌ Deleting cache: ${cacheName}`);
+                        await caches.delete(cacheName);
+                    }
+                    
+                    // 3. Clear localStorage and sessionStorage
+                    log('🧹 Clearing local storage...');
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    // 4. Try to kill any active service worker
+                    if (navigator.serviceWorker.controller) {
+                        log('⚡ Attempting to stop active service worker...');
+                        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    
+                    statusEl.className = 'status success';
+                    log('✅ Cleanup complete! Now do a hard refresh.');
+                    log('');
+                    log('🔄 Press Cmd+Shift+R (Mac) or Ctrl+Shift+R (PC)');
+                    
+                } else {
+                    statusEl.className = 'status error';
+                    log('❌ Service workers not supported');
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+        
+        async function testConnection() {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status';
+            statusEl.innerHTML = '';
+            
+            try {
+                log('🔍 Testing connection to server...');
+                
+                // Try to fetch with cache bypass
+                const response = await fetch('/', {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    log('✅ Server is reachable!');
+                    log(`Status: ${response.status} ${response.statusText}`);
+                } else {
+                    statusEl.className = 'status error';
+                    log(`❌ Server returned: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                log(`❌ Connection failed: ${error.message}`);
+                log('This might mean the service worker is still intercepting requests.');
+            }
+        }
+        
+        function hardNavigate() {
+            // Use location.href for hard navigation (bypasses service worker)
+            window.location.href = '/';
+        }
+        
+        // Auto-run cleanup on load
+        window.addEventListener('load', () => {
+            log('🚀 Page loaded. Click "Force Complete Cleanup" to start.');
+        });
+    </script>
+</body>
+</html>

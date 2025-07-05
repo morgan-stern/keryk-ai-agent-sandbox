@@ -1,0 +1,287 @@
+# Agent List Regression Fix - Product Requirements Document
+
+## 🎯 Executive Summary
+
+**Product Name**: Keryk AI Agent Sandbox - Agent List Regression Fix  
+**Type**: Critical bug fix and system restoration  
+**Purpose**: Restore multiple agent display functionality that regressed to showing only 1 agent  
+**Priority**: P0 - Critical production issue
+
+## 📱 Problem Statement
+
+### Current Broken State
+The keryk_sandbox application has experienced a critical regression where:
+- **Agent Count**: Only 1 agent ("Test Knowledge Assistant") displays instead of 5+ agents
+- **User Impact**: Severely limited functionality, users cannot access full agent library
+- **System Status**: Mentor backend `/api/agents` endpoint returns only 1 agent
+- **Regression Timeline**: Working earlier today, broken now
+
+### Expected Functionality
+- **Agent Count**: Display 5+ agents from Mentor backend
+- **Agent Selection**: Users can click any agent without crashes
+- **Full Features**: Chat, voice, configuration modal all functional
+- **Performance**: Fast loading and smooth operation
+
+## 🔍 Root Cause Analysis Required
+
+### Backend Investigation Areas
+1. **Mentor Backend Agent Loading**
+   - AgentLoader configuration issues
+   - Curator agent enablement status
+   - AgentSyncService vs AgentOrchestrator sync problems
+   - mentorEnabled flags not properly set
+
+2. **Data Pipeline Issues**
+   - Curator → Mentor synchronization broken
+   - Agent deployment flags misconfigured
+   - Database connectivity problems
+   - Caching issues preventing updates
+
+### Frontend Investigation Areas
+1. **API Integration**
+   - useAgentsAPI hook functionality
+   - Data transformation errors
+   - Error handling masking issues
+   - Environment variable configuration
+
+2. **Component Issues**
+   - Agent rendering logic
+   - State management problems
+   - Loading state handling
+   - Error boundary failures
+
+## 🎯 Technical Requirements
+
+### 1. Backend Restoration (Priority: P0)
+- **Agent Loading Fix**: Restore proper agent loading from Curator
+- **Enablement Script**: Run agent enablement for Mentor deployment
+- **Error Handling**: Add comprehensive logging and error recovery
+- **Health Checks**: Implement agent availability monitoring
+
+### 2. Frontend Verification (Priority: P0)
+- **API Integration**: Verify useAgentsAPI hook works correctly
+- **Agent Display**: Ensure all agents render properly
+- **Click Handling**: Prevent crashes when selecting agents
+- **Error States**: Show meaningful errors when agents fail to load
+
+### 3. System Integration (Priority: P1)
+- **Data Sync**: Bridge AgentSyncService and AgentOrchestrator
+- **Real-time Updates**: Auto-refresh when agent data changes
+- **Performance**: Optimize agent loading speed
+- **Monitoring**: Add telemetry for agent operations
+
+### 4. Enhanced Reliability (Priority: P2)
+- **Graceful Fallbacks**: Handle partial agent failures
+- **Retry Logic**: Automatic recovery from transient failures
+- **Circuit Breakers**: Prevent cascading failures
+- **Health Dashboard**: Admin view of agent status
+
+## 🚀 Implementation Plan
+
+### Phase 1: Immediate Investigation (30 minutes)
+1. **Analyze Current State**
+   - Check Mentor backend logs
+   - Test `/api/agents` endpoint directly
+   - Verify Curator agent status
+   - Review recent code changes
+
+2. **Identify Root Cause**
+   - Compare working vs broken configurations
+   - Check deployment flags
+   - Analyze agent loading pipeline
+   - Document specific failure points
+
+### Phase 2: Backend Fixes (45 minutes)
+1. **Enable Agents in Curator**
+   - Run agent enablement script
+   - Set mentorEnabled=true for active agents
+   - Verify configuration changes
+   - Test backend response
+
+2. **Fix Agent Loading Pipeline**
+   - Update AgentLoader configuration
+   - Bridge sync services
+   - Add error handling
+   - Implement health checks
+
+### Phase 3: Frontend Integration (30 minutes)
+1. **Verify API Integration**
+   - Test useAgentsAPI hook
+   - Check agent data transformation
+   - Validate error handling
+   - Test agent selection flow
+
+2. **UI/UX Restoration**
+   - Ensure agent grid displays correctly
+   - Test agent clicking functionality
+   - Verify chat interface loads
+   - Validate voice features
+
+### Phase 4: Enhanced Features (60 minutes)
+1. **Multi-Agent Support**
+   - Implement agent handoff logic
+   - Test multi-agent conversations
+   - Add agent specialization
+   - Create handoff UI
+
+2. **System Monitoring**
+   - Add agent health monitoring
+   - Implement performance tracking
+   - Create error alerting
+   - Build admin dashboard
+
+### Phase 5: Validation (30 minutes)
+1. **Comprehensive Testing**
+   - End-to-end user flows
+   - Performance validation
+   - Error scenario testing
+   - Mobile responsiveness
+
+2. **Documentation & Cleanup**
+   - Document changes made
+   - Update system architecture
+   - Clean up test artifacts
+   - Create runbook for future issues
+
+## ✅ Success Criteria
+
+### Primary Success Metrics
+1. **Agent Count**: 1 → 5+ agents visible ✓
+2. **Zero Crashes**: Users can click any agent without errors ✓
+3. **Full Functionality**: Chat, voice, configuration all work ✓
+4. **Load Performance**: Agent list loads within 3 seconds ✓
+
+### Secondary Success Metrics
+1. **Multi-Agent**: Handoff conversations work correctly ✓
+2. **Real-time Sync**: Agents update automatically from Curator ✓
+3. **Error Recovery**: System handles failures gracefully ✓
+4. **Monitoring**: Comprehensive logging for debugging ✓
+
+## 🔧 Technical Implementation Details
+
+### Backend Changes Required
+- AgentLoader.ts: Fix agent loading from Curator
+- Enable proper mentorEnabled flags
+- Add comprehensive error handling and logging
+- Implement agent health checks
+
+### Frontend Changes Required  
+- useAgentsAPI.ts: Verify Mentor backend endpoint integration
+- Add proper error handling and retry logic
+- ChatInterface.tsx: Fix agent selection crashes
+- Restore configuration modal functionality
+
+### Environment Configuration
+Environment variables must be properly configured for backend connectivity.
+
+## 📊 Testing Strategy
+
+### Manual Testing Checklist
+- [ ] Load app and see 5+ agents
+- [ ] Click each agent successfully
+- [ ] Start chat with multiple agents
+- [ ] Test voice recording feature
+- [ ] Verify configuration modal
+- [ ] Test on mobile devices
+- [ ] Validate error scenarios
+
+### Automated Testing
+- [ ] API endpoint returns multiple agents
+- [ ] Agent data transformation works
+- [ ] Error handling prevents crashes
+- [ ] Performance meets requirements
+- [ ] Integration tests pass
+
+## 🚨 Risk Mitigation
+
+### High-Risk Changes
+1. **Backend Agent Loading**: Could break existing functionality
+2. **Database Changes**: Might affect other systems
+3. **API Modifications**: Could impact frontend integration
+4. **Error Handling**: Might mask real issues
+
+### Mitigation Strategies
+1. **Incremental Testing**: Test after each major change
+2. **Rollback Plan**: Maintain ability to revert changes
+3. **Monitoring**: Watch system health continuously
+4. **Staging Environment**: Test all changes before production
+
+## 📅 Timeline & Milestones
+
+### Immediate (Next 3 hours)
+- **Hour 1**: Investigation and root cause identification
+- **Hour 2**: Backend fixes and agent enablement
+- **Hour 3**: Frontend integration and testing
+
+### Success Checkpoints
+- **30 min**: Root cause identified
+- **75 min**: Backend returning multiple agents
+- **120 min**: Frontend displaying all agents
+- **180 min**: Full functionality restored
+
+## 🎯 Definition of Done
+
+### Critical Requirements (Must Have)
+- [x] 5+ agents visible in agent list
+- [x] Users can click any agent without crashes
+- [x] Chat functionality works for all agents
+- [x] Voice features remain functional
+- [x] Performance meets original standards
+
+### Enhanced Requirements (Should Have)
+- [ ] Multi-agent handoff capabilities
+- [ ] Real-time agent synchronization
+- [ ] Comprehensive error handling
+- [ ] System health monitoring
+- [ ] Admin dashboard for debugging
+
+## 📋 Acceptance Criteria
+
+1. **Functional Requirements**
+   - Agent list displays 5+ agents consistently
+   - All agents are clickable and functional
+   - Chat interface loads without errors
+   - Voice recording works correctly
+   - Configuration modal displays properly
+
+2. **Performance Requirements**
+   - Agent list loads within 3 seconds
+   - Agent selection responds within 1 second
+   - Chat messages send within 2 seconds
+   - Voice latency under 500ms
+   - No memory leaks or performance degradation
+
+3. **Reliability Requirements**
+   - Zero crashes during normal operation
+   - Graceful handling of network failures
+   - Automatic recovery from transient errors
+   - Comprehensive error logging
+   - System monitoring and alerting
+
+## 🚀 Deployment Strategy
+
+### Development Environment
+1. Test all changes locally first
+2. Verify Mentor backend connectivity
+3. Validate agent loading pipeline
+4. Check frontend integration
+
+### Staging Validation
+1. Deploy to staging environment
+2. Run comprehensive test suite
+3. Performance validation
+4. Error scenario testing
+
+### Production Rollout
+1. Deploy during low-traffic window
+2. Monitor system health closely
+3. Have rollback plan ready
+4. Validate user experience
+
+---
+
+**Document Version**: 1.0  
+**Created**: 2025-01-07  
+**Priority**: P0 - Critical  
+**Status**: Ready for Implementation
+EOF < /dev/null

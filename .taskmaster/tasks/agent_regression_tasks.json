@@ -1,0 +1,209 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Analyze Root Cause and Logs",
+        "description": "Investigate current system state, review backend logs, test `/api/agents` endpoint, and verify Curator agent status to identify regression cause.",
+        "details": "Access Mentor backend logs via centralized logging (e.g., ELK stack or AWS CloudWatch). Directly test `/api/agents` endpoint using Postman or curl. Review Curator agent status in database or admin panel. Compare working vs. broken configurations, check deployment flags, and document specific failure points. Use Node.js (v18+) for backend scripts if needed.",
+        "testStrategy": "Manual review of logs and endpoint responses. Confirm only 1 agent is returned. Document findings and compare with previous working state.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Access and Collect Backend Logs",
+            "description": "Retrieve relevant Mentor backend logs from the centralized logging system (e.g., ELK stack or AWS CloudWatch) for the timeframe surrounding the regression.",
+            "dependencies": [],
+            "details": "Ensure log entries include sufficient metadata and are filtered for errors, warnings, and anomalies related to the `/api/agents` endpoint and Curator agent.",
+            "status": "done",
+            "testStrategy": "Verify that logs are accessible, complete, and contain entries for all relevant system components during the incident window."
+          },
+          {
+            "id": 2,
+            "title": "Test /api/agents Endpoint",
+            "description": "Directly test the `/api/agents` API endpoint using tools such as Postman or curl to observe current behavior and capture responses.",
+            "dependencies": [
+              1
+            ],
+            "details": "Document request/response payloads, status codes, and any error messages. Compare with expected outputs from previous working states.",
+            "status": "done",
+            "testStrategy": "Confirm endpoint is reachable and responses are consistent with system documentation or prior working examples."
+          },
+          {
+            "id": 3,
+            "title": "Verify Curator Agent Status",
+            "description": "Check the status of the Curator agent in the database or admin panel to determine if it is running, misconfigured, or failing.",
+            "dependencies": [
+              2
+            ],
+            "details": "Review agent health indicators, recent activity logs, and configuration parameters for anomalies or changes.",
+            "status": "done",
+            "testStrategy": "Ensure Curator agent status matches expected operational state and is consistent with system requirements."
+          },
+          {
+            "id": 4,
+            "title": "Compare Working and Broken Configurations",
+            "description": "Analyze and compare system configurations, deployment flags, and environment variables between the last known working state and the current broken state.",
+            "dependencies": [
+              3
+            ],
+            "details": "Identify any recent changes, mismatches, or misconfigurations that could have introduced the regression.",
+            "status": "done",
+            "testStrategy": "Validate that configuration differences are documented and correlate with observed failures."
+          },
+          {
+            "id": 5,
+            "title": "Document Failure Points and Root Cause",
+            "description": "Synthesize findings from logs, endpoint tests, agent status, and configuration analysis to pinpoint specific failure points and determine the root cause of the regression.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create a detailed report outlining the sequence of events, contributing factors, and recommended remediation steps.\n<info added on 2025-07-05T19:03:46.145Z>\nROOT CAUSE IDENTIFIED: The Mentor backend only returns agents that have `deployment.mentorEnabled = true` in the Curator database. Currently, only 1 agent (or a fallback test agent) has this flag set. \n\nSOLUTION: Run the agent enablement script to enable all active agents for Mentor deployment:\n```\ncd /Users/morganstern/mentor/packages/backend && npx ts-node src/scripts/enable-agents-for-mentor.ts\n```\n\nThis will update the necessary database flags to make all active agents available to the Mentor system.\n</info added on 2025-07-05T19:03:46.145Z>",
+            "status": "done",
+            "testStrategy": "Review documentation for completeness, clarity, and actionable insights; confirm that the identified root cause is supported by evidence from previous subtasks."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Fix Backend Agent Loading",
+        "description": "Restore proper agent loading from Curator, run agent enablement script, and ensure mentorEnabled flags are set correctly.",
+        "details": "Update AgentLoader.ts to correctly fetch agents from Curator. Run agent enablement script (e.g., Node.js script using axios or fetch). Set mentorEnabled=true for all active agents in database. Add comprehensive error handling and logging using Winston (v3.8+). Implement agent health checks with simple HTTP endpoints.",
+        "testStrategy": "Test `/api/agents` endpoint returns 5+ agents. Verify agent enablement in Curator. Check logs for errors and health check responses.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update AgentLoader.ts to fetch agents from Curator",
+            "description": "Modify the AgentLoader.ts file to correctly fetch agent data from the Curator service, ensuring proper data mapping and error handling.",
+            "dependencies": [],
+            "details": "1. Identify the current agent loading mechanism in AgentLoader.ts\n2. Update the fetch logic to correctly connect to Curator API endpoints\n3. Ensure proper data mapping between Curator response and internal agent model\n4. Implement retry logic for failed requests (max 3 retries with exponential backoff)\n5. Add Winston logging for successful/failed agent loading operations\n6. Handle edge cases like empty responses or malformed data",
+            "status": "done",
+            "testStrategy": "Write unit tests using Jest to verify agent loading with mocked Curator responses. Include tests for successful loading, API failures, and malformed data scenarios."
+          },
+          {
+            "id": 2,
+            "title": "Create agent enablement script",
+            "description": "Develop a Node.js script that enables agents by making appropriate API calls to set their status to active.",
+            "dependencies": [],
+            "details": "1. Create a new script file (enableAgents.js) in the scripts directory\n2. Use axios for HTTP requests to the agent management endpoints\n3. Implement authentication handling for secure API access\n4. Add command-line arguments to control which agents to enable (all or specific IDs)\n5. Include proper error handling with informative messages\n6. Add Winston logging to track script execution and results\n7. Document usage instructions in script header comments",
+            "status": "done",
+            "testStrategy": "Test the script manually against development environment. Create a dry-run mode that logs actions without making changes for verification."
+          },
+          {
+            "id": 3,
+            "title": "Update database to set mentorEnabled flags",
+            "description": "Create and execute a database update operation to set mentorEnabled=true for all active agents in the database.",
+            "dependencies": [],
+            "details": "1. Create a database migration script to update the mentorEnabled field\n2. Use the ORM's query builder or raw SQL to update only active agents\n3. Add a transaction wrapper to ensure atomic updates\n4. Include a backup mechanism before making changes\n5. Add logging for the number of records updated\n6. Implement validation to verify the update was successful\n7. Create a rollback procedure in case of failures",
+            "status": "done",
+            "testStrategy": "Test the migration in a staging environment first. Create a verification query to confirm all active agents have mentorEnabled=true after the update."
+          },
+          {
+            "id": 4,
+            "title": "Implement agent health check endpoints",
+            "description": "Create HTTP endpoints that allow monitoring of agent health status and implement comprehensive error handling and logging.",
+            "dependencies": [
+              3
+            ],
+            "details": "1. Define new routes in the API for agent health checks (GET /api/agents/health)\n2. Implement controller methods that verify agent connectivity and status\n3. Set up Winston logger configuration with appropriate log levels and formats\n4. Create structured error responses with meaningful status codes and messages\n5. Add metrics collection for health check results (success rate, response time)\n6. Implement caching to prevent excessive health checks (5-minute TTL)\n7. Document the new endpoints in API documentation",
+            "status": "done",
+            "testStrategy": "Write integration tests that verify health check endpoints return correct status codes for various agent states. Test logging by capturing and verifying log output during tests."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement Backend Error Handling and Monitoring",
+        "description": "Add robust error handling, logging, and agent availability monitoring to backend.",
+        "details": "Enhance AgentLoader.ts with try-catch blocks and Winston logging. Add health check endpoints for agent status. Implement basic monitoring using Prometheus (v2.45+) and Grafana (v10.2+) for agent availability metrics.",
+        "testStrategy": "Simulate agent loading failures and verify error logs. Test health check endpoints. Confirm monitoring dashboards show agent status.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Verify Frontend API Integration",
+        "description": "Ensure useAgentsAPI hook correctly fetches and displays agent data from Mentor backend.",
+        "details": "Update useAgentsAPI.ts to handle Mentor backend responses. Add error handling and retry logic using axios (v1.6+). Validate data transformation and error states. Use React Query (v4.36+) for efficient data fetching and caching.",
+        "testStrategy": "Manual and automated tests: verify hook returns 5+ agents, handles errors, and retries on failure. Check for crashes or UI freezes.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Restore Agent Display and Selection",
+        "description": "Ensure agent grid displays all agents and clicking any agent does not crash the application.",
+        "details": "Update agent rendering logic in React components. Use state management (e.g., Zustand v4.4+ or Redux Toolkit v2.1+) for agent selection. Add error boundaries and loading states. Test agent selection flow and chat interface initialization.",
+        "testStrategy": "Manual UI testing: click each agent, verify no crashes, and check chat/voice features. Automated tests: simulate agent selection and verify state updates.",
+        "priority": "high",
+        "dependencies": [
+          4
+        ],
+        "status": "in-progress",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement System Integration and Real-time Updates",
+        "description": "Bridge AgentSyncService and AgentOrchestrator, enable real-time agent updates, and optimize loading speed.",
+        "details": "Integrate AgentSyncService with AgentOrchestrator using event-driven architecture (e.g., Redis Pub/Sub or WebSockets). Add auto-refresh logic for agent data changes. Optimize loading speed with caching (Redis v7.2+). Add telemetry for agent operations using OpenTelemetry (v1.0+).",
+        "testStrategy": "Test real-time agent updates by modifying agent data in Curator. Verify frontend reflects changes. Check telemetry logs for agent operations.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Enhance Reliability and Monitoring",
+        "description": "Add graceful fallbacks, retry logic, circuit breakers, and build an admin dashboard for agent status.",
+        "details": "Implement retry logic and circuit breakers in both backend and frontend (e.g., axios-retry, opossum). Add graceful fallbacks for partial agent failures. Build admin dashboard using React Admin (v4.14+) or custom UI to display agent health and status.",
+        "testStrategy": "Simulate network failures and partial agent outages. Verify fallbacks and retries work. Test admin dashboard displays correct agent status.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Comprehensive Testing and Documentation",
+        "description": "Perform end-to-end testing, validate performance, test error scenarios, and update documentation.",
+        "details": "Run end-to-end tests using Cypress (v13+). Validate performance (agent list loads within 3s, selection within 1s). Test error scenarios (network failures, invalid agent data). Update system architecture documentation and create a runbook for future issues.",
+        "testStrategy": "Manual and automated end-to-end tests. Performance benchmarking. Error scenario simulation. Review updated documentation for accuracy.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-05T19:00:30.392Z",
+      "updated": "2025-07-05T19:15:32.697Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

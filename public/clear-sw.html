@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Service Worker</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f0f0f0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Service Worker Cleanup</h1>
+    <div id="status" class="status">Checking for service workers...</div>
+    <button onclick="clearServiceWorkers()">Clear All Service Workers</button>
+    <button onclick="window.location.href='/'">Go to Home</button>
+
+    <script>
+        async function clearServiceWorkers() {
+            const statusEl = document.getElementById('status');
+            
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    if (registrations.length === 0) {
+                        statusEl.className = 'status success';
+                        statusEl.textContent = 'No service workers found!';
+                        return;
+                    }
+                    
+                    statusEl.textContent = `Found ${registrations.length} service worker(s). Unregistering...`;
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                    
+                    // Clear all caches
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(cacheName => caches.delete(cacheName))
+                    );
+                    
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'All service workers and caches cleared! You can now reload the page.';
+                    
+                    // Auto redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'Service workers not supported in this browser.';
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Check on load
+        window.addEventListener('load', async () => {
+            const statusEl = document.getElementById('status');
+            
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                if (registrations.length > 0) {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = `${registrations.length} service worker(s) found. Click the button to clear them.`;
+                } else {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'No service workers active!';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
