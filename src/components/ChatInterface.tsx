@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Send, Mic, MicOff } from 'lucide-react'
 import { useAgentAPI } from '@/hooks/useAgentAPI'
+import { VoiceMode } from './VoiceMode'
 import { useAuthCheck } from '@/hooks/useAuthCheck'
 import { cn } from '@/lib/utils'
 import { api } from '@/services/api'
@@ -258,25 +259,11 @@ export function ChatInterface({ agentId }: ChatInterfaceProps) {
 
       {/* Content */}
       {isVoiceMode ? (
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center max-w-md">
-            <div className="mb-8">
-              <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <Mic className="w-12 h-12 text-primary animate-pulse" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Voice Mode</h2>
-              <p className="text-text-muted mb-4">
-                Full voice-to-voice chat is coming soon. Switch to text mode to use voice recording.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsVoiceMode(false)}
-              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
-            >
-              Switch to Text Mode
-            </button>
-          </div>
-        </div>
+        <VoiceMode
+          agentId={agentId}
+          agentName={agent.name}
+          onSwitchToText={() => setIsVoiceMode(false)}
+        />
       ) : (
         <>
           {/* Messages Area */}
