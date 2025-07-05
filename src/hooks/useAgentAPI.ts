@@ -18,13 +18,8 @@ export function useAgentAPI(agentId: string): UseAgentReturn {
       setLoading(true);
       setError(null);
       
-      const mentorBackendUrl = process.env.NEXT_PUBLIC_MENTOR_BACKEND_URL || '';
-      if (!mentorBackendUrl) {
-        throw new Error('NEXT_PUBLIC_MENTOR_BACKEND_URL is not configured');
-      }
-      
-      // Fetch all agents and filter for the specific one
-      const response = await fetch(`${mentorBackendUrl}/api/agents`);
+      // Use Next.js API route to proxy the request (avoids CORS issues)
+      const response = await fetch('/api/agents');
       
       if (!response.ok) {
         throw new Error(`Failed to fetch agents: ${response.statusText}`);

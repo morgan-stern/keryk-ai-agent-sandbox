@@ -117,8 +117,19 @@ export function useOpenAIRealtime(config: RealtimeConfig) {
         }
       };
 
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Voice chat requires HTTPS. Please access this site using https:// instead of http://');
+      }
+
       // Get user media and add track
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
       pc.addTrack(mediaStream.getTracks()[0]);
 
       // Set codec preferences based on selected codec

@@ -129,6 +129,19 @@ export function VoiceMode({ agentId, agentName, onSwitchToText }: VoiceModeProps
                   : `Real-time voice conversations with ${agentName} using OpenAI Realtime API`
                 }
               </p>
+              
+              {/* HTTPS requirement notice */}
+              {!isConnected && typeof window !== 'undefined' && window.location.protocol === 'http:' && (
+                <div className="bg-yellow-50 dark:bg-yellow-950/30 rounded-lg p-4 mb-4 text-sm">
+                  <p className="text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Voice chat requires HTTPS on mobile devices
+                  </p>
+                  <p className="text-yellow-600 dark:text-yellow-400 mt-2">
+                    Access this site using: <strong>https://{window.location.host}</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

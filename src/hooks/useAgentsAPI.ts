@@ -19,9 +19,8 @@ export function useAgentsAPI(): UseAgentsReturn {
       setLoading(true);
       setError(null);
       
-      // Use Mentor backend directly
-      const mentorBackendUrl = process.env.NEXT_PUBLIC_MENTOR_BACKEND_URL || 'http://localhost:8080';
-      const response = await fetch(`${mentorBackendUrl}/api/agents`);
+      // Use Next.js API route to proxy the request (avoids CORS issues)
+      const response = await fetch('/api/agents');
       
       if (!response.ok) {
         throw new Error(`Failed to fetch agents: ${response.statusText}`);
