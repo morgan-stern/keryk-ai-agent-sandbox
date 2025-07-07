@@ -1,20 +1,25 @@
 'use client'
 
-import { Mic, MessageSquare, ArrowRight, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { Mic, MessageSquare, ArrowRight, Sparkles, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Agent } from '@/types/agent'
+import { AgentPromptModal } from './AgentPromptModal'
 
 interface AgentCardProps {
-  agent: Agent
+  agent: Agent & { systemPrompt?: string }
   onClick: () => void
   className?: string
 }
 
 export function AgentCard({ agent, onClick, className }: AgentCardProps) {
+  const [showPromptModal, setShowPromptModal] = useState(false);
+
   return (
-    <button
-      onClick={onClick}
-      className={cn(
+    <>
+      <button
+        onClick={onClick}
+        className={cn(
         'group relative flex flex-col p-6 bg-card rounded-2xl transition-all duration-300 touch-manipulation tap-highlight-transparent',
         'border border-border hover:border-primary/30',
         'text-left',
@@ -54,9 +59,23 @@ export function AgentCard({ agent, onClick, className }: AgentCardProps) {
         </div>
         
         {/* Description */}
-        <p className="text-sm text-text-muted line-clamp-3 font-body leading-relaxed mb-4 flex-grow">
+        <p className="text-sm text-text-muted line-clamp-3 font-body leading-relaxed mb-2 flex-grow">
           {agent.description}
         </p>
+        
+        {/* System Prompt Button */}
+        {agent.systemPrompt && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPromptModal(true);
+            }}
+            className="text-xs text-primary hover:text-primary-hover flex items-center gap-1 mb-4 transition-colors cursor-pointer"
+          >
+            <FileText className="h-3 w-3" />
+            View System Prompt
+          </div>
+        )}
         
         {/* Action indicator */}
         <div className="flex items-center justify-between mt-auto">
@@ -69,5 +88,16 @@ export function AgentCard({ agent, onClick, className }: AgentCardProps) {
         </div>
       </div>
     </button>
+
+    {/* System Prompt Modal */}
+    {agent.systemPrompt && (
+      <AgentPromptModal
+        isOpen={showPromptModal}
+        onClose={() => setShowPromptModal(false)}
+        agentName={agent.name}
+        systemPrompt={agent.systemPrompt}
+      />
+    )}
+    </>
   )
 }

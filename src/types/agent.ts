@@ -8,6 +8,7 @@ export interface Agent {
   voiceEnabled?: boolean; // Backward compatibility
   avatar?: string;
   capabilities?: string[];
+  systemPrompt?: string; // Agent's system prompt
   createdAt?: Date;
   updatedAt?: Date;
 }

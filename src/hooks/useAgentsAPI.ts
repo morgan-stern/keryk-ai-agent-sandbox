@@ -39,6 +39,7 @@ export function useAgentsAPI(): UseAgentsReturn {
         voiceEnabled: mentorAgent.voiceEnabled !== false,
         avatar: mentorAgent.avatar,
         capabilities: mentorAgent.capabilities || [],
+        systemPrompt: mentorAgent.systemPrompt, // Add system prompt
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }));
