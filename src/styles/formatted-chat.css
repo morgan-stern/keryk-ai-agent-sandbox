@@ -1,0 +1,75 @@
+/* Enhanced formatting for agent messages */
+.formatted-agent-message {
+  line-height: 1.6;
+}
+
+.formatted-agent-message p {
+  margin-bottom: 0.75rem;
+}
+
+.formatted-agent-message ol {
+  margin-left: 1rem;
+  margin-bottom: 0.75rem;
+  list-style-type: decimal;
+}
+
+.formatted-agent-message ul {
+  margin-left: 1rem;
+  margin-bottom: 0.75rem;
+  list-style-type: disc;
+}
+
+.formatted-agent-message li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+.formatted-agent-message strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.formatted-agent-message h1,
+.formatted-agent-message h2,
+.formatted-agent-message h3 {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+}
+
+.formatted-agent-message h1 {
+  font-size: 1.25rem;
+}
+
+.formatted-agent-message h2 {
+  font-size: 1.125rem;
+}
+
+.formatted-agent-message h3 {
+  font-size: 1rem;
+}
+
+.formatted-agent-message code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+}
+
+.formatted-agent-message pre {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.formatted-agent-message blockquote {
+  border-left: 4px solid #e2e8f0;
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}

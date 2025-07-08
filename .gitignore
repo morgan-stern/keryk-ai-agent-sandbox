@@ -60,4 +60,9 @@ node_modules/
 
 # Task files
 # tasks.json
-# tasks/ 
+# tasks/
+
+# Firebase service account files
+sme-interview-platform-*.json
+*-firebase-adminsdk-*.json
+firebase-service-account.json 

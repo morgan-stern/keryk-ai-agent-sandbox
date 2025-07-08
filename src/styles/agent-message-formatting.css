@@ -1,0 +1,47 @@
+/* Auto-formatting for agent messages */
+.bg-card {
+  line-height: 1.6 !important;
+  white-space: pre-wrap !important;
+}
+
+/* Style numbered lists automatically */
+.bg-card:has-text("1.") {
+  padding-left: 1rem !important;
+}
+
+/* Better text formatting for agent responses */
+.bg-card:not(.bg-primary) {
+  white-space: pre-line !important;
+  word-wrap: break-word !important;
+}
+
+/* Improve readability */
+.bg-card:not(.bg-primary) {
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
+}
+
+/* Auto-detect and style bold text patterns */
+.bg-card:not(.bg-primary) {
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+
+/* Better spacing for multi-line content */
+.bg-card:not(.bg-primary) {
+  padding: 1rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Style lists */
+.bg-card:not(.bg-primary) {
+  counter-reset: item;
+}
+
+.bg-card:not(.bg-primary) p {
+  margin-bottom: 0.5rem;
+}
+
+.bg-card:not(.bg-primary) strong {
+  font-weight: 600;
+  color: inherit;
+}

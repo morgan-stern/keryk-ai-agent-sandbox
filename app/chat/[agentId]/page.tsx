@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { ChatInterface } from '@/components/ChatInterface'
+import { EnhancedChatInterface } from '@/components/EnhancedChatInterface'
 import { LoadingScreen } from '@/components/LoadingScreen'
 
 export default async function ChatPage({ 
@@ -12,7 +12,7 @@ export default async function ChatPage({
   return (
     <div className="flex flex-col h-screen bg-background">
       <Suspense fallback={<LoadingScreen />}>
-        <ChatInterface agentId={agentId} />
+        <EnhancedChatInterface agentId={agentId} />
       </Suspense>
     </div>
   )

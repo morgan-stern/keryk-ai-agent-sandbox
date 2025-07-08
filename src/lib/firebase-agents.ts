@@ -59,8 +59,8 @@ export async function getAgentsFromFirebase(): Promise<KerykAgent[]> {
   try {
     console.log('Fetching agents directly from Firebase...')
     
-    // Get all agents from the standardizedAgents collection
-    const agentsSnapshot = await adminDb.collection('standardizedAgents').get()
+    // Get all agents from the mentor_agents collection
+    const agentsSnapshot = await adminDb.collection('mentor_agents').get()
     
     if (agentsSnapshot.empty) {
       console.log('No agents found in Firebase')
@@ -70,33 +70,33 @@ export async function getAgentsFromFirebase(): Promise<KerykAgent[]> {
     const agents: KerykAgent[] = []
     
     agentsSnapshot.forEach((doc) => {
-      const agent = doc.data() as StandardizedAgent
+      const agent = doc.data() as any
       
-      // Convert StandardizedAgent format to KerykAgent format
+      // Convert Mentor agent format to KerykAgent format
       const kerykAgent: KerykAgent = {
         id: doc.id,
-        name: agent.name,
-        displayName: agent.name,
+        name: agent.name || agent.displayName,
+        displayName: agent.displayName || agent.name,
         description: agent.description,
         avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${doc.id}`,
-        capabilities: agent.capabilities || ['text-generation', 'knowledge-retrieval'],
+        capabilities: agent.capabilities?.supportsVoice ? ['text-generation', 'voice-interaction', 'knowledge-retrieval'] : ['text-generation', 'knowledge-retrieval'],
         specialization: agent.specialization || [],
-        model: agent.configuration?.model || 'gpt-4',
-        temperature: agent.configuration?.temperature || 0.7,
-        maxTokens: agent.configuration?.maxTokens || 2000,
-        systemPrompt: agent.configuration?.systemPrompt || 'Default prompt',
-        isActive: agent.metadata?.enabled !== false,
+        model: agent.llmConfig?.model || agent.configuration?.model || 'gpt-4',
+        temperature: agent.llmConfig?.temperature || agent.configuration?.temperature || 0.7,
+        maxTokens: agent.llmConfig?.maxTokens || agent.configuration?.maxTokens || 2000,
+        systemPrompt: agent.llmConfig?.systemPrompt || agent.configuration?.systemPrompt || agent.systemPrompt || 'Default prompt',
+        isActive: agent.isActive !== false,
         metadata: {
           companyId: agent.metadata?.companyId || 'x2pD8XtnLlbum9lx2w6x',
-          createdBy: agent.metadata?.owner || 'dev-super-admin',
-          successRate: 0.95,
-          responseTime: 1200,
+          createdBy: agent.metadata?.createdBy || 'dev-super-admin',
+          successRate: agent.metadata?.successRate || 0.95,
+          responseTime: agent.metadata?.responseTime || 1200,
           rating: agent.metadata?.rating || 4.5,
-          tools: agent.tools?.map((t: any) => t.id || t.name) || [],
+          tools: agent.tools?.map((t: any) => typeof t === 'string' ? t : (t.id || t.name)) || [],
           tags: agent.metadata?.tags || []
         },
-        createdAt: agent.metadata?.createdAt || new Date().toISOString(),
-        updatedAt: agent.metadata?.updatedAt || new Date().toISOString()
+        createdAt: agent.createdAt || agent.metadata?.createdAt || new Date().toISOString(),
+        updatedAt: agent.updatedAt || agent.metadata?.updatedAt || new Date().toISOString()
       }
       
       agents.push(kerykAgent)
@@ -115,40 +115,40 @@ export async function getAgentFromFirebase(agentId: string): Promise<KerykAgent 
   try {
     console.log(`Fetching agent ${agentId} from Firebase...`)
     
-    const agentDoc = await adminDb.collection('standardizedAgents').doc(agentId).get()
+    const agentDoc = await adminDb.collection('mentor_agents').doc(agentId).get()
     
     if (!agentDoc.exists) {
       console.log(`Agent ${agentId} not found in Firebase`)
       return null
     }
     
-    const agent = agentDoc.data() as StandardizedAgent
+    const agent = agentDoc.data() as any
     
-    // Convert to KerykAgent format
+    // Convert Mentor agent format to KerykAgent format
     const kerykAgent: KerykAgent = {
       id: agentDoc.id,
-      name: agent.name,
-      displayName: agent.name,
+      name: agent.name || agent.displayName,
+      displayName: agent.displayName || agent.name,
       description: agent.description,
       avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${agentDoc.id}`,
-      capabilities: agent.capabilities || ['text-generation', 'knowledge-retrieval'],
+      capabilities: agent.capabilities?.supportsVoice ? ['text-generation', 'voice-interaction', 'knowledge-retrieval'] : ['text-generation', 'knowledge-retrieval'],
       specialization: agent.specialization || [],
-      model: agent.configuration?.model || 'gpt-4',
-      temperature: agent.configuration?.temperature || 0.7,
-      maxTokens: agent.configuration?.maxTokens || 2000,
-      systemPrompt: agent.configuration?.systemPrompt || 'Default prompt',
-      isActive: agent.metadata?.enabled !== false,
+      model: agent.llmConfig?.model || agent.configuration?.model || 'gpt-4',
+      temperature: agent.llmConfig?.temperature || agent.configuration?.temperature || 0.7,
+      maxTokens: agent.llmConfig?.maxTokens || agent.configuration?.maxTokens || 2000,
+      systemPrompt: agent.llmConfig?.systemPrompt || agent.configuration?.systemPrompt || agent.systemPrompt || 'Default prompt',
+      isActive: agent.isActive !== false,
       metadata: {
         companyId: agent.metadata?.companyId || 'x2pD8XtnLlbum9lx2w6x',
-        createdBy: agent.metadata?.owner || 'dev-super-admin',
-        successRate: 0.95,
-        responseTime: 1200,
+        createdBy: agent.metadata?.createdBy || 'dev-super-admin',
+        successRate: agent.metadata?.successRate || 0.95,
+        responseTime: agent.metadata?.responseTime || 1200,
         rating: agent.metadata?.rating || 4.5,
-        tools: agent.tools?.map((t: any) => t.id || t.name) || [],
+        tools: agent.tools?.map((t: any) => typeof t === 'string' ? t : (t.id || t.name)) || [],
         tags: agent.metadata?.tags || []
       },
-      createdAt: agent.metadata?.createdAt || new Date().toISOString(),
-      updatedAt: agent.metadata?.updatedAt || new Date().toISOString()
+      createdAt: agent.createdAt || agent.metadata?.createdAt || new Date().toISOString(),
+      updatedAt: agent.updatedAt || agent.metadata?.updatedAt || new Date().toISOString()
     }
     
     console.log(`Successfully fetched agent ${agentId} from Firebase`)
