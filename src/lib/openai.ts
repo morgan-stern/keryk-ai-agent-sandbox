@@ -17,11 +17,18 @@ export interface ChatMessage {
   content: string
 }
 
+export interface AgentConfig {
+  model?: string
+  temperature?: number
+  maxTokens?: number
+}
+
 export async function generateChatResponse(
   messages: ChatMessage[],
   agentName: string,
   agentDescription?: string,
-  model: string = 'gpt-4o-mini'
+  systemPrompt?: string,
+  config?: AgentConfig
 ) {
   const client = getOpenAIClient()
   
@@ -29,18 +36,31 @@ export async function generateChatResponse(
     throw new Error('OpenAI API key not configured')
   }
 
-  // Prepare system message based on agent info
+  // Use provided system prompt or fall back to basic description
   const systemMessage: ChatMessage = {
     role: 'system',
-    content: `You are ${agentName}. ${agentDescription || ''} Be helpful, concise, and friendly in your responses.`
+    content: systemPrompt || `You are ${agentName}. ${agentDescription || ''} Be helpful, concise, and friendly in your responses.`
   }
 
   try {
+    // Ensure temperature is a valid number between 0 and 2
+    const temperature = typeof config?.temperature === 'number' 
+      ? Math.min(Math.max(config.temperature, 0), 2) 
+      : 0.7;
+    
+    // Fix common model name issues
+    let modelName = config?.model || 'gpt-4o-mini';
+    if (modelName.includes('o4-mini')) {
+      modelName = 'gpt-4o-mini';
+    }
+    
+    console.log(`Using OpenAI model: ${modelName}, temperature: ${temperature}`);
+    
     const completion = await client.chat.completions.create({
-      model,
+      model: modelName,
       messages: [systemMessage, ...messages],
-      temperature: 0.7,
-      max_tokens: 500,
+      temperature: temperature,
+      max_completion_tokens: config?.maxTokens || 1000, // Using new parameter name for newer models
     })
 
     return completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response.'

@@ -9,6 +9,7 @@ import { ConnectionStatus, ConnectionState } from './voice/ConnectionStatus'
 import { TranscriptView, TranscriptEntry } from './voice/TranscriptView'
 import { VoiceControls } from './voice/VoiceControls'
 import { MobileVoiceLayout } from './voice/MobileVoiceLayout'
+import { VoiceSelector } from './voice/VoiceSelector'
 
 interface VoiceModeProps {
   agentId: string
@@ -23,18 +24,30 @@ export function VoiceMode({ agentId, agentName, agentAvatar, onSwitchToText }: V
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([])
   const [isMuted, setIsMuted] = useState(false)
   const [voiceMode, setVoiceMode] = useState<'auto-detect' | 'push-to-talk'>('auto-detect')
+  const [selectedVoice, setSelectedVoice] = useState<string>('alloy')
   const [inputAudioLevel, setInputAudioLevel] = useState(0)
   const [outputAudioLevel, setOutputAudioLevel] = useState(0)
   const [currentTranscript, setCurrentTranscript] = useState('')
   const transcriptIdCounter = useRef(0)
 
-  // Get API key from environment
+  // Get API key from environment and load saved voice preference
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_OPENAI_API_KEY
     if (key) {
       setApiKey(key)
     }
+    
+    // Load saved voice preference
+    const savedVoice = localStorage.getItem('preferredVoice')
+    if (savedVoice) {
+      setSelectedVoice(savedVoice)
+    }
   }, [])
+  
+  // Save voice preference when it changes
+  useEffect(() => {
+    localStorage.setItem('preferredVoice', selectedVoice)
+  }, [selectedVoice])
 
   const {
     isConnected,
@@ -48,6 +61,7 @@ export function VoiceMode({ agentId, agentName, agentAvatar, onSwitchToText }: V
     stopRecording,
   } = useOpenAIRealtime({
     apiKey,
+    voice: selectedVoice,
     instructions: `You are ${agentName}, a helpful AI assistant. Respond naturally and conversationally in voice conversations.`
   })
 
@@ -202,9 +216,21 @@ export function VoiceMode({ agentId, agentName, agentAvatar, onSwitchToText }: V
               </div>
               <h2 className="text-xl font-semibold">{agentName}</h2>
               <p className="text-sm text-text-muted mt-1">
-                {isConnected ? 'Voice chat active' : 'Ready to connect'}
+                {isConnected ? `Voice chat active (${selectedVoice})` : 'Ready to connect'}
               </p>
             </div>
+
+            {/* Voice Selector */}
+            {!isConnected && (
+              <div className="space-y-2">
+                <p className="text-xs text-text-muted text-center">Select Voice</p>
+                <VoiceSelector
+                  selectedVoice={selectedVoice}
+                  onVoiceChange={setSelectedVoice}
+                  disabled={connectionState !== 'idle'}
+                />
+              </div>
+            )}
 
             {/* Audio Visualizers */}
             {isConnected && (
@@ -312,9 +338,22 @@ export function VoiceMode({ agentId, agentName, agentAvatar, onSwitchToText }: V
                   </div>
                   <h2 className="text-lg font-semibold">{agentName}</h2>
                   <p className="text-xs text-text-muted mt-1">
-                    {isConnected ? 'Voice chat active' : 'Ready to connect'}
+                    {isConnected ? `Voice chat active (${selectedVoice})` : 'Ready to connect'}
                   </p>
                 </div>
+
+                {/* Voice Selector - Mobile */}
+                {!isConnected && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-text-muted text-center">Select Voice</p>
+                    <VoiceSelector
+                      selectedVoice={selectedVoice}
+                      onVoiceChange={setSelectedVoice}
+                      disabled={connectionState !== 'idle'}
+                      className="text-sm"
+                    />
+                  </div>
+                )}
 
                 {/* Audio Visualizers */}
                 {isConnected && (
